@@ -1,0 +1,49 @@
+// database
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// generator
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+}
+
+model User {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+    name String
+    email String @unique
+    hashedPassword String
+    createdAt DateTime @default(now())
+    quizzesCreated Quiz[] @relation("quizzesCreated")
+    quizzesPartOf Quiz[] @relation("quizzesPartOf")
+}
+
+model Quiz {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+    quizTitle String
+    quizDescription String?
+    numOfQuestions Int
+    totalPoints Int @default(0)
+    questions Questions[]
+    ownerId String @db.ObjectId
+    participantIds String[] @db.ObjectId
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    owner User? @relation("quizzesCreated" ,fields: [ownerId], references: [id])
+    participant User? @relation("quizzesPartOf" ,fields: [participantIds], references: [id])
+}
+
+model Questions {
+    id String @id @default(auto()) @map("_id") @db.ObjectId
+    question String
+    options String[]
+    correctOptions String[]
+    pointsAwarded Int @default(1)
+    quizId String @db.ObjectId
+    createdAt DateTime @default(now())
+
+    quiz Quiz? @relation(fields: [quizId], references: [id])
+}
