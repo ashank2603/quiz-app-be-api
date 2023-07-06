@@ -124,6 +124,25 @@ async def add_questions_to_quiz(question: CreateQuestion, quizId: str, token: st
     else:
         raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
     
+@router.get("/{quizId}/questions")
+async def get_quiz_questions(quizId: str, token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        user_info = token_check["decodedToken"]
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            questions = await prisma.question.find_many(
+                where={
+                    "quizId": quizId
+                }
+            )
+            return questions
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
+    
 @router.post("/{quizId}/solve")
 async def solve_quiz(request: Request ,quizId: str, token: str = Depends(auth_token_scheme)):
     token_check = verify_jwt_token(token.credentials)
