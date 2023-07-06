@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from fastapi.responses import JSONResponse
 from models.user import CreateUser, LoginUser
+from fastapi.security import HTTPBearer
 from passlib.context import CryptContext
 from prisma import Prisma
-from prisma.errors import UniqueViolationError, RecordNotFoundError
+from prisma.errors import UniqueViolationError, RecordNotFoundError, PrismaError
 from utils.jwt_util import generate_jwt_token
 
 router = APIRouter(prefix="/user", tags=["User"])
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+auth_token_scheme = HTTPBearer()
 
 def get_password_hash(password):
     return bcrypt_context.hash(password)
@@ -50,5 +52,28 @@ async def signup(user: CreateUser):
         return JSONResponse({"message": "User Created Successfully!"}, status_code=status.HTTP_201_CREATED)
     except UniqueViolationError:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User with email already exists!")
+    finally:
+        await prisma.disconnect()
+
+@router.get("/{userId}")
+async def get_user_info(userId: str, token: str = Depends(auth_token_scheme)):
+    try:
+        prisma = Prisma()
+        await prisma.connect()
+        user_info = await prisma.user.find_unique_or_raise(
+            where={
+                "id": userId
+            },
+            include={
+                "quizzesCreated": True,
+                "quizzesPartOf": True
+            }
+        )
+        return user_info
+    except RecordNotFoundError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User Not Found!")
+    except PrismaError as e:
+        print(e)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")
     finally:
         await prisma.disconnect()
