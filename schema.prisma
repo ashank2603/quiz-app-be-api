@@ -26,7 +26,8 @@ model Quiz {
     quizDescription String?
     numOfQuestions Int @default(0)
     totalPoints Int @default(0)
-    questions Questions[]
+    pointsScored Int @default(0)
+    questions Question[]
     ownerId String @db.ObjectId
     participantIds String[] @db.ObjectId
     createdAt DateTime @default(now())
@@ -36,11 +37,13 @@ model Quiz {
     participant User? @relation("quizzesPartOf" ,fields: [participantIds], references: [id])
 }
 
-model Questions {
+model Question {
     id String @id @default(auto()) @map("_id") @db.ObjectId
     question String
     options String[]
     correctOptions String[]
+    selectedOptions String[]
+    correct Boolean @default(false)
     pointsAwarded Int @default(1)
     quizId String @db.ObjectId
     createdAt DateTime @default(now())
