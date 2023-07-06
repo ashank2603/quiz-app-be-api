@@ -54,6 +54,8 @@ model Answer {
   answer String[]
   quizId String @db.ObjectId
   userId String @db.ObjectId
+  correct Boolean @default(false)
+  pointScored Int @default(0)
 }
 
 model Result {

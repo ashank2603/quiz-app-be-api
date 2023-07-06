@@ -1,4 +1,3 @@
-import json
 from fastapi import APIRouter, Depends, status, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
@@ -9,6 +8,9 @@ from utils.jwt_util import verify_jwt_token
 
 router = APIRouter(prefix="/quiz", tags=["Quiz"])
 auth_token_scheme = HTTPBearer()
+
+def compare_lists(list1, list2):
+    return set(list1) == set(list2) and len(list1) == len(list2)
 
 @router.get("/")
 async def get_all_quizzes(token: str = Depends(auth_token_scheme)):
@@ -159,7 +161,82 @@ async def solve_quiz(request: Request ,quizId: str, token: str = Depends(auth_to
             new_answer = await prisma.answer.create_many(
                 data=req_body
             )
+            questions_data = await prisma.question.find_many(
+                where={
+                    'quizId': quizId
+                },
+                order={
+                    'id': 'asc'
+                }
+            )
+            answers_data = await prisma.answer.find_many(
+                where={
+                    'quizId': quizId
+                },
+                order={
+                    "questionId": 'asc'
+                }
+            )
+
+            for i in range(len(questions_data)):
+                if compare_lists(questions_data[i].correctOptions, answers_data[i].answer):
+                    await prisma.answer.update(
+                        data={
+                            "correct": True,
+                            "pointScored": questions_data[i].pointsAwarded
+                        },
+                        where={
+                            "id": answers_data[i].id
+                        }
+                    )
+            
+
+            pointsScored = 0
+
+            temp_points_data = await prisma.answer.find_many(
+                where={
+                    "quizId": quizId,
+                    "userId": user_info["userId"],
+                    "correct": True
+                }
+            )
+
+            for i in temp_points_data:
+                pointsScored += i.pointScored
+
+            new_result = await prisma.result.create(
+                data={
+                    "quizId": quizId,
+                    "userId": user_info["userId"],
+                    "pointsScored": pointsScored
+                }
+            )
             return JSONResponse({"message": "Answers submitted!"}, status_code=status.HTTP_200_OK)
+        except PrismaError as e:
+            print(e)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
+    
+@router.get("/{quizId}/results")
+async def get_quiz_results(quizId: str ,token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        user_info = token_check["decodedToken"]
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            result = await prisma.result.find_first_or_raise(
+                where={
+                    "quizId": quizId,
+                    "userId": user_info["userId"]
+                }
+            )
+            return result
+        except RecordNotFoundError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No Results")
         except PrismaError as e:
             print(e)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")
