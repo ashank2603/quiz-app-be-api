@@ -211,6 +211,17 @@ async def solve_quiz(request: Request ,quizId: str, token: str = Depends(auth_to
                     "pointsScored": pointsScored
                 }
             )
+
+            await prisma.quiz.update(
+                data={
+                    "participantIds": {
+                        "push": [user_info["userId"]]
+                    }
+                },
+                where={
+                    "id": quizId
+                }
+            )
             return JSONResponse({"message": "Answers submitted!"}, status_code=status.HTTP_200_OK)
         except PrismaError as e:
             print(e)
@@ -240,6 +251,35 @@ async def get_quiz_results(quizId: str ,token: str = Depends(auth_token_scheme))
         except PrismaError as e:
             print(e)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
+    
+@router.get("/{quizId}/participant-results")
+async def get_participant_results(quizId: str, token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        user_info = token_check["decodedToken"]
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            participants = await prisma.quiz.find_unique_or_raise(
+                where={
+                    "id": quizId
+                }
+            )
+            if participants.ownerId == user_info["userId"]:
+                participants = participants.participantIds
+                for i in participants:
+                    res = await prisma.result.find_many(
+                        where={
+                            'userId': i,
+                            'quizId': quizId
+                        }
+                    )
+                return res
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorized for this action")
         finally:
             await prisma.disconnect()
     else:
