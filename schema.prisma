@@ -24,7 +24,7 @@ model Quiz {
     id String @id @default(auto()) @map("_id") @db.ObjectId
     quizTitle String
     quizDescription String?
-    numOfQuestions Int
+    numOfQuestions Int @default(0)
     totalPoints Int @default(0)
     questions Questions[]
     ownerId String @db.ObjectId

@@ -1,6 +1,7 @@
 import os
 from jose import jwt
 from jose.jwt import ExpiredSignatureError, JWTError
+# from authlib.jose.errors import InvalidTokenError, ExpiredTokenError, BadSignatureError
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -25,8 +26,8 @@ def generate_jwt_token(email: str, userId: str):
 def verify_jwt_token(token: str):
     try:
         decoded_token = jwt.decode(token, JWT_SECRET_KEY)
-        return decoded_token
-    except ExpiredSignatureError:
-        return {"message": "Token expired!"}
+        return {"status": 200, "decodedToken": decoded_token}
     except JWTError:
-        return {"message": "Error validating token"}
+        return {"status": 400, "error": "Error Validating Token"}
+    except ExpiredSignatureError:
+        return {"status": 400, "error": "Token Expired"}
