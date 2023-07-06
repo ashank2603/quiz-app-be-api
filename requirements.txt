@@ -1,3 +1,7 @@
 fastapi
 uvicorn
 prisma
+python-jose
+bcrypt
+passlib
+python-dotenv
