@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+import json
+from fastapi import APIRouter, Depends, status, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBearer
 from models.quiz import CreateQuiz, CreateQuestion
@@ -10,8 +11,22 @@ router = APIRouter(prefix="/quiz", tags=["Quiz"])
 auth_token_scheme = HTTPBearer()
 
 @router.get("/")
-def get_all_quizzes():
-    pass
+async def get_all_quizzes(token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            quizzes = await prisma.quiz.find_many(
+                order={
+                    "createdAt": "desc"
+                }
+            )
+            return quizzes
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
 
 @router.get("/{quizId}")
 async def get_quiz_by_id(quizId, token: str = Depends(auth_token_scheme)):
@@ -82,12 +97,50 @@ async def add_questions_to_quiz(question: CreateQuestion, quizId: str, token: st
                         "options": question.options,
                         "correctOptions": question.correctOptions,
                         "pointsAwarded": question.pointsAwarded,
-                        "quizId": quizId
+                        "quizId": quizId,
+                    }
+                )
+                await prisma.quiz.update(
+                    where={
+                        "id": quizId
+                    },
+                    data={
+                        "numOfQuestions" : {
+                            "increment": 1
+                        },
+                        "totalPoints": {
+                            "increment": question.pointsAwarded
+                        }
                     }
                 )
                 return JSONResponse({"message": "Question Added!"}, status_code=status.HTTP_201_CREATED)
             else:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="You are not authorized for this action")
+        except PrismaError as e:
+            print(e)
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
+    
+@router.post("/{quizId}/solve")
+async def solve_quiz(request: Request ,quizId: str, token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        user_info = token_check["decodedToken"]
+        req_body = await request.json()
+        req_body = req_body["data"]
+        for i in req_body:
+            i["quizId"] = quizId
+            i["userId"] = user_info["userId"]
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            new_answer = await prisma.answer.create_many(
+                data=req_body
+            )
+            return JSONResponse({"message": "Answers submitted!"}, status_code=status.HTTP_200_OK)
         except PrismaError as e:
             print(e)
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Something Went Wrong!")

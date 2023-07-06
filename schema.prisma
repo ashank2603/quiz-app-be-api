@@ -26,7 +26,6 @@ model Quiz {
     quizDescription String?
     numOfQuestions Int @default(0)
     totalPoints Int @default(0)
-    pointsScored Int @default(0)
     questions Question[]
     ownerId String @db.ObjectId
     participantIds String[] @db.ObjectId
@@ -42,11 +41,24 @@ model Question {
     question String
     options String[]
     correctOptions String[]
-    selectedOptions String[]
-    correct Boolean @default(false)
     pointsAwarded Int @default(1)
     quizId String @db.ObjectId
     createdAt DateTime @default(now())
 
     quiz Quiz? @relation(fields: [quizId], references: [id])
+}
+
+model Answer {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  questionId String @db.ObjectId
+  answer String[]
+  quizId String @db.ObjectId
+  userId String @db.ObjectId
+}
+
+model Result {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+  quizId String @db.ObjectId
+  userId String @db.ObjectId
+  pointsScored Int @default(0)
 }
