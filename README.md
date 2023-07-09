@@ -1,5 +1,6 @@
 # QUIZ Backend REST API
-The deployed version of the api can be accessed [here]()
+The deployed version of the api can be accessed [here](https://quiz-be-fibr.onrender.com/docs)  
+Please access [this](https://evening-firewall-9d5.notion.site/Fibr-Quiz-Task-API-Docs-bbc60c4104c94c189ff337db11425cbb?pvs=4) page to see how to use the API.
 ## How to run:
 - Clone the repository and open the directory in a terminal.
 - Create a virtual environment using [virtualenv](https://virtualenv.pypa.io/en/latest/) library. Run `virtualenv venv` in the terminal.
