@@ -22,6 +22,9 @@ async def get_all_quizzes(token: str = Depends(auth_token_scheme)):
             quizzes = await prisma.quiz.find_many(
                 order={
                     "createdAt": "desc"
+                },
+                include={
+                    "owner": True
                 }
             )
             return quizzes
@@ -43,7 +46,8 @@ async def get_quiz_by_id(quizId, token: str = Depends(auth_token_scheme)):
                     "id": quizId
                 },
                 include={
-                    "questions": True
+                    "questions": True,
+                    "owner": True
                 }
             )
             return quiz
@@ -126,6 +130,54 @@ async def add_questions_to_quiz(question: CreateQuestion, quizId: str, token: st
     else:
         raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
     
+@router.get("/{quizId}/quiz-blueprint")
+async def get_quiz_blueprint_for_solving(quizId: str, token: str = Depends(auth_token_scheme)):
+    token_check = verify_jwt_token(token.credentials)
+    if token_check["status"] == 200:
+        user_info = token_check["decodedToken"]
+        try:
+            prisma = Prisma()
+            await prisma.connect()
+            user_result = await prisma.result.find_first(
+                where={
+                    "quizId": quizId,
+                    "userId": user_info["userId"]
+                }
+            )
+            if user_result:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already attempted this quiz!")
+            questions = await prisma.question.find_many(
+                where={
+                    "quizId": quizId
+                }
+            )
+            data = []
+            only_questions_options_obj = []
+            for i in questions:
+                temp_obj = {
+                    "questionId": i.id,
+                    "answer": []
+                }
+                temp_obj2 = {
+                    "questionId": i.id,
+                    "question": i.question,
+                    "options": i.options,
+                    "points": i.pointsAwarded
+                }
+                data.append(temp_obj)
+                only_questions_options_obj.append(temp_obj2)
+            
+            return {
+                "blueprint": {
+                    "data": data
+                },
+                "questions": only_questions_options_obj
+            }
+        finally:
+            await prisma.disconnect()
+    else:
+        raise HTTPException(status_code=token_check["status"], detail=token_check["error"])
+    
 @router.get("/{quizId}/questions")
 async def get_quiz_questions(quizId: str, token: str = Depends(auth_token_scheme)):
     token_check = verify_jwt_token(token.credentials)
@@ -134,6 +186,14 @@ async def get_quiz_questions(quizId: str, token: str = Depends(auth_token_scheme
         try:
             prisma = Prisma()
             await prisma.connect()
+            user_result = await prisma.result.find_first(
+                where={
+                    "quizId": quizId,
+                    "userId": user_info["userId"]
+                }
+            )
+            if user_result:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already attempted this quiz!")
             questions = await prisma.question.find_many(
                 where={
                     "quizId": quizId

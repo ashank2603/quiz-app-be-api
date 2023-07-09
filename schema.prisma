@@ -63,4 +63,5 @@ model Result {
   quizId String @db.ObjectId
   userId String @db.ObjectId
   pointsScored Int @default(0)
+  attemptedAt DateTime @default(now())
 }
