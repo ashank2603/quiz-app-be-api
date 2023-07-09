@@ -186,14 +186,6 @@ async def get_quiz_questions(quizId: str, token: str = Depends(auth_token_scheme
         try:
             prisma = Prisma()
             await prisma.connect()
-            user_result = await prisma.result.find_first(
-                where={
-                    "quizId": quizId,
-                    "userId": user_info["userId"]
-                }
-            )
-            if user_result:
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You have already attempted this quiz!")
             questions = await prisma.question.find_many(
                 where={
                     "quizId": quizId

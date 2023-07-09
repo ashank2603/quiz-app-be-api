@@ -5,3 +5,5 @@ python-jose
 bcrypt
 passlib
 python-dotenv
+pytest
+requests

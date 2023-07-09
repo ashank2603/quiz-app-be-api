@@ -3,6 +3,14 @@ The deployed version of the api can be accessed [here]()
 ## How to run:
 - Clone the repository and open the directory in a terminal.
 - Create a virtual environment using [virtualenv](https://virtualenv.pypa.io/en/latest/) library. Run `virtualenv venv` in the terminal.
+- Create a dotenv file and paste the following in it. Make sure to replace the placeholders with your values. (The HEADER_JWT_KEY value can be fetched from the login endpoint.)
+
+    ```
+    DATABASE_URL = "<YOUR_MONGODB_URL>"
+    JWT_SECRET_KEY = "<JWT_SECRET_KWY>"
+    API_ENDPOINT = "http://127.0.0.1:8000"
+    HEADER_JWT_KEY = "<YOUR_HEADER_JWT_KEY>"
+    ```  
 - To activate the virtual environment:
     - For Windows:  
     `venv\scripts\activate`
@@ -18,3 +26,5 @@ The deployed version of the api can be accessed [here]()
     - Run the following command in the terminal:  
     `uvicorn main:app`
 - The api docs can be accessed at [localhost:8000/docs](http://localhost:8000/docs).
+- To execute the tests, run the following command in the terminal:  
+    `python -m pytest -v`
